@@ -1,0 +1,70 @@
+/* 星空背景canvas样式 */
+#universe {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+    /* 不能禁用鼠标点击 */
+    pointer-events: auto;  
+    display: block;
+}
+
+/* three.js 画布样式，确保在星空背景之上 */
+canvas:not(#universe) {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+        pointer-events: auto; 
+    display: block;
+}
+
+/* 页面内容居中等样式，可根据需要调整 */
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    font-family: 'Segoe UI', 'Arial', sans-serif;
+    text-align: center;
+}
+
+
+
+#footerContent {
+    font-family: sans-serif;
+    font-size: 110%;
+    color: rgba(200, 220, 255, .3);
+    width: 100%;
+    position: fixed;
+    bottom: 0%;
+    padding: 20%;
+    text-align: center;
+    z-index: 20;
+}
+
+#footer {
+    position: absolute;
+    bottom: 0%;
+    height: 300px;
+    width: 100%;
+}
+
+#scene {
+    height: 100%;
+    position: absolute;
+    left: 50%;
+    margin-left: -768px;
+}
+#scene {
+    height: 100%;
+    position: absolute;
+    left: 25%;
+    margin-left: -768px;
+    /* 缩小到2/3并向左移动50px */
+    transform: scale(0.8) translateX(-70px);
+    transform-origin: left bottom;
+}
