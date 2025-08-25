@@ -35,6 +35,8 @@ scene.add(group);
 let heart = null;
 let sampler = null;
 let originHeart = null;
+
+// todo 这里替换一下，本地 访问会因为同源策略无法访问
 new THREE.OBJLoader().load('https://assets.codepen.io/127738/heart_2.obj', obj => {
   heart = obj.children[0];
   heart.geometry.rotateX(-Math.PI * 0.5);
