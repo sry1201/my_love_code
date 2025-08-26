@@ -43,7 +43,7 @@ let heartFont = null;
 function loadCNFont(cb) {
   const loader = new THREE.FontLoader();
   loader.load(
-    './fonts/Noto_Sans_SC_Regular2.json',
+    './fonts/Noto_Sans_SC_Regular.json',
     f => { heartFont = f; console.log('CN font loaded'); cb && cb(f); },
     undefined,
     err => console.error('Font load failed:', err)
