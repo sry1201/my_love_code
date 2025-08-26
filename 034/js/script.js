@@ -31,12 +31,64 @@ controls.minDistance = 0.7;
 const group = new THREE.Group();
 scene.add(group);
 
-// 文本距离心脏中心的本地 Z 偏移（可调）
-let TEXT_OFFSET_Z = 0.02;
+// 文本距离心脏中心的本地 Z 偏移（贴在心脏内）
+let TEXT_OFFSET_Z = 0.006;
 const _tmpCenter = new THREE.Vector3();
-// 控制台调节：setTextOffset(0.01) 等
 window.setTextOffset = v => { TEXT_OFFSET_Z = v; };
 
+// === 微弱星光（仅围绕文字的小范围） ===
+let txtStars = null;
+let txtStarMat = null;
+
+function makeStarTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 32;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(16,16,0, 16,16,16);
+  g.addColorStop(0.0, 'rgba(255,255,255,1.0)');
+  g.addColorStop(0.5, 'rgba(255,220,240,0.55)');
+  g.addColorStop(1.0, 'rgba(255,220,240,0.0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,32,32);
+  const tex = new THREE.CanvasTexture(c);
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  return tex;
+}
+
+// 扩大范围（接近心脏边缘）+ 暖金色（非红）
+function createTextStars(count = 300, inner = 0.08, outer = 0.20, zSpread = 0.025, color = 0xfff5d6, size = 3.5, opacity = 0.28) {
+  if (outer <= inner) outer = inner + 0.005;
+
+  const geom = new THREE.BufferGeometry();
+  const pos = new Float32Array(count * 3);
+
+  for (let i = 0; i < count; i++) {
+    const theta = Math.random() * Math.PI * 2;
+    const r = Math.sqrt(Math.random() * (outer*outer - inner*inner) + inner*inner);
+    pos[i*3]     = r * Math.cos(theta);
+    pos[i*3 + 1] = r * Math.sin(theta);
+    pos[i*3 + 2] = (Math.random() * 2 - 1) * zSpread; // 薄厚
+  }
+  geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+
+  txtStarMat = new THREE.PointsMaterial({
+    map: makeStarTexture(),
+    color,
+    size,
+    sizeAttenuation: false,
+    transparent: true,
+    opacity,
+    blending: THREE.AdditiveBlending,
+    depthTest: false,
+    depthWrite: false
+  });
+
+  const pts = new THREE.Points(geom, txtStarMat);
+  pts.renderOrder = 6;
+  return pts;
+}
+// === 以上为星光 ===
 
 let heart = null;
 let sampler = null;
@@ -65,29 +117,33 @@ function makeCNText3D(text = '杏') {
   const geo = new THREE.TextGeometry(text, {
     font: heartFont,
     size: 0.12,
-    height: 0.03,
+    height: 0.02,
     curveSegments: 6,
     bevelEnabled: true,
-    bevelThickness: 0.003,
-    bevelSize: 0.002,
+    bevelThickness: 0.002,
+    bevelSize: 0.0015,
     bevelSegments: 1
   });
   geo.center();
 
-  // 更容易看见：关闭深度测试，适度提高不透明度
+  // 仅比心脏颜色“稍微淡一点”：向白色 lerp 少量，保持同色系
+  const base = (heart && heart.material) ? heart.material.color.clone() : new THREE.Color(0xff5555);
+  const slight = base.clone().lerp(new THREE.Color(0xffffff), 0.18); // 0.15~0.22 之间更自然
+
   const mat = new THREE.MeshBasicMaterial({
-    color: 0xff5555,
+    color: slight.getHex(),
     transparent: true,
-    opacity: 0.6,
-    depthTest: false,     // 关键：不与心脏深度互相遮挡
+    opacity: 0.28,   // 比之前 0.22 稍高，保证清晰
+    depthTest: false,
     depthWrite: false,
     side: THREE.DoubleSide
   });
 
   const mesh = new THREE.Mesh(geo, mat);
-  mesh.renderOrder = 1000; // 确保在心脏之后渲染
+  mesh.renderOrder = 7;
   return mesh;
 }
+
 // 一次性导出：心脏 + 文字
 window.bakeAndDownloadHeartObj = function(filename = 'heart_2_with_text.obj') {
   if (!heart) return;
@@ -159,13 +215,21 @@ gsap.to(group.rotation, {
   repeat: -1
 });
 
-// 每帧根据“当前心脏几何中心”更新文字位置
+// 每帧根据“当前心脏几何中心”更新位置（文字与星光）
 function updateHeartTextPosition() {
-  if (!heart || !heartText3D || !heart.geometry) return;
+  if (!heart || !heart.geometry) return;
   heart.geometry.computeBoundingBox();
   const center = heart.geometry.boundingBox.getCenter(_tmpCenter);
-  heartText3D.position.copy(center);
-  heartText3D.position.z += TEXT_OFFSET_Z; // 沿本地 +Z 略微前凸，避免被吞没
+
+  if (heartText3D) {
+    heartText3D.position.copy(center);
+    heartText3D.position.z += TEXT_OFFSET_Z;
+  }
+  // 若文字未生成，也让星光跟随心脏中心
+  if (txtStars && !heartText3D) {
+    txtStars.position.copy(center);
+    txtStars.position.z += TEXT_OFFSET_Z;
+  }
 }
 
 function render(a) {
@@ -188,11 +252,22 @@ function render(a) {
   }
   heart.geometry.attributes.position.needsUpdate = true;
 
-  // 文字心跳与位置校准
+  // 文字心跳与位置校准 + 星点动态
   if (heartText3D) {
-    const s = 1 + 0.2 * beat.a; // 心跳幅度可调
+    const s = 1 + 0.12 * beat.a;
     heartText3D.scale.set(s, s, s);
-    updateHeartTextPosition();   // 关键：每帧重定位到中心
+  }
+  updateHeartTextPosition();
+
+  if (txtStars && txtStarMat) {
+    // 环绕圈轻微扩张（更显眼，但不刺眼）
+    const ring = 1 + 0.10 * beat.a;
+    txtStars.scale.set(ring, ring, 1);
+
+    txtStars.rotation.z += 0.0012;
+    const t = performance.now() * 0.001;
+    const o = 0.20 + 0.06 * Math.sin(t) + 0.06 * beat.a; // 0.14~0.32
+    txtStarMat.opacity = Math.max(0.14, Math.min(0.32, o));
   }
 
   controls.update();
@@ -224,21 +299,37 @@ new THREE.OBJLoader().load('./models/heart_2.obj', obj => {
     opacity: 0.3
   });
 
-  // 在几何中心放置“杏”，并比之前更外凸，避免被吞没
   heart.geometry.computeBoundingBox();
   const center = heart.geometry.boundingBox.getCenter(new THREE.Vector3());
+
+  // 更大范围的环形星光（接近心脏边缘）
+  if (!txtStars) {
+    txtStars = createTextStars(300, 0.08, 0.20, 0.025, 0xfff5d6, 3.5, 0.28);
+    heart.add(txtStars);
+    txtStars.position.copy(center);
+    txtStars.position.z += TEXT_OFFSET_Z;
+  }
+
+  // 再尝试加载字体与文字
   loadCNFont(() => {
     heartText3D = makeCNText3D('杏');
     if (heartText3D) {
       heart.add(heartText3D);
       heartText3D.position.copy(center);
-      heartText3D.position.z += 0.06; // 加大外凸距离
+      heartText3D.position.z += TEXT_OFFSET_Z;
+
+      // 将星光挂到文字下，只围绕文字
+      if (txtStars && txtStars.parent !== heartText3D) {
+        heart.remove(txtStars);
+        heartText3D.add(txtStars);
+        txtStars.position.set(0, 0, 0); // 相对文字中心
+        txtStars.renderOrder = 6;
+      }
     }
   });
 
   originHeart = Array.from(heart.geometry.attributes.position.array);
 
-  // 防止缺少 MeshSurfaceSampler 时抛错（index.html 若未引入该文件）
   if (THREE.MeshSurfaceSampler) {
     sampler = new THREE.MeshSurfaceSampler(heart).build();
     init();
@@ -248,3 +339,20 @@ new THREE.OBJLoader().load('./models/heart_2.obj', obj => {
 
   renderer.setAnimationLoop(render);
 });
+
+// 运行时快速调参（范围/数量/颜色/大小/透明度）
+window.setStarsRange = function(inner = 0.08, outer = 0.20, count = 300, color = 0xfff5d6, size = 3.5, opacity = 0.28) {
+  const parent = (txtStars && txtStars.parent) || heartText3D || heart;
+  if (!parent) return;
+  if (txtStars) parent.remove(txtStars);
+  txtStars = createTextStars(count, inner, outer, 0.025, color, size, opacity);
+  parent.add(txtStars);
+  if (parent === heart) {
+    heart.geometry.computeBoundingBox();
+    const c = heart.geometry.boundingBox.getCenter(new THREE.Vector3());
+    txtStars.position.copy(c);
+    txtStars.position.z += TEXT_OFFSET_Z;
+  } else {
+    txtStars.position.set(0, 0, 0);
+  }
+};
