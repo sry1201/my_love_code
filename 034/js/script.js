@@ -31,6 +31,12 @@ controls.minDistance = 0.7;
 const group = new THREE.Group();
 scene.add(group);
 
+// 文本距离心脏中心的本地 Z 偏移（可调）
+let TEXT_OFFSET_Z = 0.02;
+const _tmpCenter = new THREE.Vector3();
+// 控制台调节：setTextOffset(0.01) 等
+window.setTextOffset = v => { TEXT_OFFSET_Z = v; };
+
 
 let heart = null;
 let sampler = null;
@@ -153,6 +159,15 @@ gsap.to(group.rotation, {
   repeat: -1
 });
 
+// 每帧根据“当前心脏几何中心”更新文字位置
+function updateHeartTextPosition() {
+  if (!heart || !heartText3D || !heart.geometry) return;
+  heart.geometry.computeBoundingBox();
+  const center = heart.geometry.boundingBox.getCenter(_tmpCenter);
+  heartText3D.position.copy(center);
+  heartText3D.position.z += TEXT_OFFSET_Z; // 沿本地 +Z 略微前凸，避免被吞没
+}
+
 function render(a) {
   positions = [];
   spikes.forEach(g => {
@@ -173,15 +188,11 @@ function render(a) {
   }
   heart.geometry.attributes.position.needsUpdate = true;
 
-  // 更新文字位置，使其始终在心脏中心并面向相机
-  if (window.updateTextPosition) {
-    window.updateTextPosition();
-  }
-
-  // 文字心跳幅度更克制
+  // 文字心跳与位置校准
   if (heartText3D) {
-    const s = 1 + 0.2 * beat.a;
+    const s = 1 + 0.2 * beat.a; // 心跳幅度可调
     heartText3D.scale.set(s, s, s);
+    updateHeartTextPosition();   // 关键：每帧重定位到中心
   }
 
   controls.update();
