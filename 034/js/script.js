@@ -10,16 +10,21 @@ const camera = new THREE.PerspectiveCamera(
   1000
 );
 
-const renderer = new THREE.WebGLRenderer({
-  antialias: true,
-  alpha: true // 关键：让canvas背景透明
-});
-renderer.setClearColor(0x000000, 0); // 关键：设置为透明
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
-// renderer.setClearColor(0xff5555);
-// renderer.setSize(window.innerWidth, window.innerHeight);
-// document.body.appendChild(renderer.domElement);
+
+// 固定层级：universe(0) < canvas(1) < three(2) < footer(10)
+renderer.domElement.style.position = 'fixed';
+renderer.domElement.style.inset = '0';
+renderer.domElement.style.zIndex = '2';
+
+// 自适应
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}, false);
 
 camera.position.z = 1;
 

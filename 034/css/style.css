@@ -1,70 +1,43 @@
-/* 星空背景canvas样式 */
+/* 全局 */
+html, body { margin: 0; height: 100%; background: transparent; }
+
+/* 层级：universe(0) < canvas(1) < three(2) < footer(10) */
 #universe {
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: 0;
-    /* 不能禁用鼠标点击 */
-    pointer-events: auto;  
-    display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+#canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 1;            /* 三维心脏在它之上 */
+  pointer-events: none;  /* 不拦鼠标 */
 }
 
-/* three.js 画布样式，确保在星空背景之上 */
-canvas:not(#universe) {
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: 1;
-        pointer-events: auto; 
-    display: block;
-}
+/* Three.js 画布 z-index 在 script.js 里设为 2 */
 
-/* 页面内容居中等样式，可根据需要调整 */
-body {
-    margin: 0;
-    padding: 0;
-    overflow: hidden;
-    font-family: 'Segoe UI', 'Arial', sans-serif;
-    text-align: center;
-}
-
-
-
-#footerContent {
-    font-family: sans-serif;
-    font-size: 110%;
-    color: rgba(200, 220, 255, .3);
-    width: 100%;
-    position: fixed;
-    bottom: 0%;
-    padding: 20%;
-    text-align: center;
-    z-index: 20;
-}
-
+/* footer（人物）贴底且置顶显示 */
 #footer {
-    position: absolute;
-    bottom: 0%;
-    height: 300px;
-    width: 100%;
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 10;           /* 高于 Three.js 与文字层 */
+  width: 100%;
+  height: 34vh;          /* 放大到与 030 接近，可调 28~38vh */
+  overflow: hidden;
+  pointer-events: auto;
 }
 
-#scene {
-    height: 100%;
-    position: absolute;
-    left: 50%;
-    margin-left: -768px;
+/* SVG 场景铺满 footer 高度并水平居中 */
+#footer #scene {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);  /* 居中 */
+  width: 300%;
+  height: 100%;
 }
-#scene {
-    height: 100%;
-    position: absolute;
-    left: 25%;
-    margin-left: -768px;
-    /* 缩小到2/3并向左移动50px */
-    transform: scale(0.8) translateX(-70px);
-    transform-origin: left bottom;
-}
+
+/* 容器不参与定位（避免“悬空”） */
+.container { position: relative; }
+.content { position: relative; }
