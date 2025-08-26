@@ -785,8 +785,8 @@
               result = line.split(' '); // smooth shading
               // @todo Handle files that have varying smooth values for a set of faces inside one geometry,
               // but does not define a usemtl for each face set.
-              // This should be detected and a dummy material created (later MultiMaterial and geometry groups).
-              // This requires some care to not create extra material on each smooth value for "normal" obj files.
+              // this should be detected and a dummy material created (later MultiMaterial and geometry groups).
+              // this requires some care to not create extra material on each smooth value for "normal" obj files.
               // where explicit usemtl defines geometry groups.
               // Example asset: examples/models/obj/cerberus/Cerberus.obj
 
@@ -1149,6 +1149,9 @@
       </div>
     </div>
   </div>
+  <script src="https://unpkg.com/three@0.152.2/examples/js/loaders/FontLoader.js"></script>
+<script src="https://unpkg.com/three@0.152.2/examples/js/geometries/TextGeometry.js"></script>
+<script src="https://unpkg.com/three@0.152.2/examples/js/exporters/OBJExporter.js"></script>
 </body>
 
 </html>

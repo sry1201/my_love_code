@@ -36,31 +36,67 @@ let heart = null;
 let sampler = null;
 let originHeart = null;
 
-// todo 这里替换一下，本地 访问会因为同源策略无法访问
-// 本地加载 OBJ（通过本地服务器访问页面，避免 file:// 的 CORS 问题）
-new THREE.OBJLoader().load('./models/heart_2.obj', obj => {
-  heart = obj.children[0];
-  heart.geometry.rotateX(-Math.PI * 0.5);
+// 新增：3D“杏”文字与导出
+let heartText3D = null;
+let heartFont = null;
 
-  heart.geometry.scale(0.035, 0.035, 0.035); // 心脏整体缩小
-  heart.geometry.translate(0.0, -0.23, 0.05); // 心脏页面位置
-  group.add(heart);
+function loadCNFont(cb) {
+  const loader = new THREE.FontLoader();
+  loader.load(
+    './fonts/Noto_Sans_SC_Regular2.json',
+    f => { heartFont = f; console.log('CN font loaded'); cb && cb(f); },
+    undefined,
+    err => console.error('Font load failed:', err)
+  );
+}
 
-  heart.material = new THREE.MeshBasicMaterial({
+// todo 修改心脏中显示的文字除了这里，还要改另一个 makeCNText3D
+function makeCNText3D(text = '杏') {
+  if (!heartFont) {
+    console.warn('字体尚未加载');
+    return null;
+  }
+  const geo = new THREE.TextGeometry(text, {
+    font: heartFont,
+    size: 0.12,
+    height: 0.03,
+    curveSegments: 6,
+    bevelEnabled: true,
+    bevelThickness: 0.003,
+    bevelSize: 0.002,
+    bevelSegments: 1
+  });
+  geo.center();
+
+  // 更容易看见：关闭深度测试，适度提高不透明度
+  const mat = new THREE.MeshBasicMaterial({
     color: 0xff5555,
     transparent: true,
-    opacity: 0.3 // 0~1之间，越小越透明
+    opacity: 0.6,
+    depthTest: false,     // 关键：不与心脏深度互相遮挡
+    depthWrite: false,
+    side: THREE.DoubleSide
   });
 
-
-
-
-
-  originHeart = Array.from(heart.geometry.attributes.position.array);
-  sampler = new THREE.MeshSurfaceSampler(heart).build();
-  init();
-  renderer.setAnimationLoop(render);
-});
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.renderOrder = 1000; // 确保在心脏之后渲染
+  return mesh;
+}
+// 一次性导出：心脏 + 文字
+window.bakeAndDownloadHeartObj = function(filename = 'heart_2_with_text.obj') {
+  if (!heart) return;
+  const exporter = new THREE.OBJExporter();
+  const g = new THREE.Group();
+  g.add(heart.clone());
+  if (heartText3D) g.add(heartText3D.clone());
+  const objStr = exporter.parse(g);
+  const blob = new Blob([objStr], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
 
 let positions = [];
 const geometry = new THREE.BufferGeometry();
@@ -142,6 +178,12 @@ function render(a) {
     window.updateTextPosition();
   }
 
+  // 文字心跳幅度更克制
+  if (heartText3D) {
+    const s = 1 + 0.2 * beat.a;
+    heartText3D.scale.set(s, s, s);
+  }
+
   controls.update();
   renderer.render(scene, camera);
 }
@@ -155,3 +197,43 @@ function onWindowResize() {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
+
+// 本地加载 OBJ
+new THREE.OBJLoader().load('./models/heart_2.obj', obj => {
+  heart = obj.children[0];
+  heart.geometry.rotateX(-Math.PI * 0.5);
+
+  heart.geometry.scale(0.035, 0.035, 0.035);
+  heart.geometry.translate(0.0, -0.23, 0.05);
+  group.add(heart);
+
+  heart.material = new THREE.MeshBasicMaterial({
+    color: 0xff5555,
+    transparent: true,
+    opacity: 0.3
+  });
+
+  // 在几何中心放置“杏”，并比之前更外凸，避免被吞没
+  heart.geometry.computeBoundingBox();
+  const center = heart.geometry.boundingBox.getCenter(new THREE.Vector3());
+  loadCNFont(() => {
+    heartText3D = makeCNText3D('杏');
+    if (heartText3D) {
+      heart.add(heartText3D);
+      heartText3D.position.copy(center);
+      heartText3D.position.z += 0.06; // 加大外凸距离
+    }
+  });
+
+  originHeart = Array.from(heart.geometry.attributes.position.array);
+
+  // 防止缺少 MeshSurfaceSampler 时抛错（index.html 若未引入该文件）
+  if (THREE.MeshSurfaceSampler) {
+    sampler = new THREE.MeshSurfaceSampler(heart).build();
+    init();
+  } else {
+    console.warn('MeshSurfaceSampler 未加载，跳过 spikes 初始化');
+  }
+
+  renderer.setAnimationLoop(render);
+});
