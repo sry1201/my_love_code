@@ -14,7 +14,7 @@ const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// 固定层级：universe(0) < canvas(1) < three(2) < footer(10)
+// 层级：universe(0) < canvas(1) < three(2) < footer(20)
 renderer.domElement.style.position = 'fixed';
 renderer.domElement.style.inset = '0';
 renderer.domElement.style.zIndex = '2';
@@ -24,8 +24,7 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
-}, false);
-
+});
 camera.position.z = 1;
 
 const controls = new THREE.TrackballControls(camera, renderer.domElement);
