@@ -13,15 +13,22 @@ html, body {
 #universe {
   position: fixed;
   inset: 0;
-  z-index: 1;
+  z-index: 0;             /* 放到最底层 */
   pointer-events: none;
   background: transparent;
+}
+#text {
+  position: fixed;
+  inset: 0;
+  z-index: 1;             /* 在星空上、心脏下 */
+  pointer-events: none;
+  background: transparent !important;
 }
 #canvas {
   position: fixed;
   inset: 0;
-  z-index: 2;            /* 低于 Three.js 与 footer */
-  pointer-events: none;
+  z-index: 2;             /* 心脏（Three.js）位于最上面 */
+  pointer-events: auto;
   background: transparent;
 }
 

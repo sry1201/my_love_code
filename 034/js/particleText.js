@@ -18,7 +18,32 @@
     'SAME STAR','WITH ME ?','HAPPY','CHINESE','VALENTINE\'S','DAY','I MISS YOU'
   ];
 
-  let canvas, ctx;
+  // 使用独立画布 #text（不要用 #canvas）
+  const canvas = document.getElementById('text');
+  // 2D 上下文加 willReadFrequently，消除性能警告
+  let ctx = canvas ? canvas.getContext('2d', { willReadFrequently: true }) : null;
+
+  // 空值守卫：没有 #text 或上下文失败则直接退出，避免报错阻断 Three.js
+  if (!canvas || !ctx) {
+    console.warn('[particleText] #text 画布或 2D 上下文获取失败，跳过粒子文字渲染。');
+    // 若文件末尾有自动 init() 调用，请直接 return 防止后续 draw()
+    // return;
+  }
+
+  // 尺寸自适应
+  function resizeParticleCanvas() {
+    if (!canvas) return;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener('resize', resizeParticleCanvas);
+  resizeParticleCanvas();
+
+  // 如果文件顶部有这些常量且在后面会重新赋值，请把它们从 const 改为 let
+  // 例如（示例名，按你文件里的实际变量名修改）：
+  // let W = canvas.width, H = canvas.height;
+  // let particles = [];   // 若后续会重新赋新数组或引用
+  // let textData = null;  // 若后续会被重新赋值
   let particles = [];
   let quiver = true;
   let text = texts[0];
@@ -156,7 +181,6 @@
   }
 
   function init () {
-    canvas = document.getElementById(CANVASID)
     if (!canvas || !canvas.getContext) return
     // 修复 getImageData 性能告警
     ctx = canvas.getContext('2d', { willReadFrequently: true })

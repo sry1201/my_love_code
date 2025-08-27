@@ -10,6 +10,8 @@
 <body>
   <canvas id="universe"></canvas>
   <canvas id="canvas"></canvas>
+  <!-- 粒子文字专用 2D 画布，避免与 Three.js 共享同一画布 -->
+  <canvas id="text"></canvas>
 
   <script src="./js/universe.js"></script>
   <script src="./js/three.min.js"></script>

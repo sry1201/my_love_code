@@ -37,7 +37,7 @@ function draw() {
   // universe.fillStyle = 'rgba(9,10,15,1)';
   // universe.fillRect(0, 0, width, height);
 
-  // 改为透明清屏，允许下面的 CSS 渐变透出
+  // 改为透明清屏，允许 CSS 渐变透出
   universe.clearRect(0, 0, width, height);
 
   var starsLength = stars.length;
@@ -155,10 +155,3 @@ function windowResizeHandler() {
   canva.setAttribute('width', width);
   canva.setAttribute('height', height);
 }
-
-const renderer = new THREE.WebGLRenderer({
-  antialias: true,
-  alpha: true           // 开启透明通道
-});
-renderer.setClearColor(0x000000, 0);   // 第二个参数 0 => 透明清屏
-// 或：renderer.setClearAlpha(0);
