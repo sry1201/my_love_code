@@ -1,5 +1,10 @@
-/* 全局 */
-html, body { margin: 0; height: 100%; background: transparent; }
+/* 全局：去掉页面滚动条 */
+html, body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden; /* 关键：隐藏底部滚动条 */
+}
 
 /* 层级：universe(0) < canvas(1) < three(2) < footer(10) */
 /* 背景与文字画布：不拦截鼠标，层级低于心脏与 footer */
@@ -19,10 +24,13 @@ html, body { margin: 0; height: 100%; background: transparent; }
 /* footer（人物）贴底且置顶显示 */
 #footer {
   position: absolute;
-  bottom: 0%;
-  height: 300px;
+  left: 0;
+  right: 0;
+  bottom: 0;   /* 贴底 */
+  height: 380px; /* 你的放大高度，可在 360~420 调整 */
   width: 100%;
-  z-index: 20;           /* 关键：盖过画布与 Three.js */
+  z-index: 20;
+  overflow: hidden; /* 防止内部放大后溢出产生滚动 */
 }
 
 /* 保持你“最初”的 footer 样式，并加 z-index，避免被遮挡 */
@@ -38,14 +46,15 @@ html, body { margin: 0; height: 100%; background: transparent; }
   z-index: 20;
 }
 
-/* 只保留这一版 #scene，保持人物在左下且缩放位置与之前一致 */
+/* 合并为一处：放大人物与地面，并微调位置 */
 #scene {
-  height: 100%;
   position: absolute;
   left: 25%;
-  margin-left: -768px;
-  transform: scale(0.8) translateX(-70px);
+  bottom: 0;                 /* 锚定底部（关键） */
+  margin-left: -768px;     /* 调整人物位置 */
+  height: 100%;
   transform-origin: left bottom;
+  transform: translate(-660px, 66px) scale(1.15); /* 可把 16px 微调为 12~24px */
 }
 
 /* 关键：让 #footer 相对视口定位，不再相对容器；防止“悬空变小” */
