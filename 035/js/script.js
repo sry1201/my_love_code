@@ -296,7 +296,8 @@ new THREE.OBJLoader().load('./models/heart_2.obj', obj => {
   heart = obj.children[0];
   heart.geometry.rotateX(-Math.PI * 0.5);
 
-  heart.geometry.scale(0.035, 0.035, 0.035);
+  // 调小此处的缩放系数即可（例如从 0.035 降到 0.028）
+  heart.geometry.scale(0.028, 0.030, 0.030);
   heart.geometry.translate(0.0, -0.23, 0.05);
   group.add(heart);
 

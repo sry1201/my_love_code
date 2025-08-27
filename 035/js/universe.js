@@ -55,14 +55,14 @@ function Star() {
 
   this.reset = function() {
     // 随机决定该星点是否为“巨星”（概率约为3%）。
-    this.giant = getProbability(15);
+    this.giant = getProbability(18);
     // 如果是“巨星”或是第一次运行，则不是“彗星”；否则有约10%的概率成为“彗星”。
-    this.comet = this.giant || first ? false : getProbability(10);
+    this.comet = this.giant || first ? false : getProbability(18);
     this.x = getRandInterval(0, width - 10);
     this.y = getRandInterval(0, height);
 
     // 随机生成星点的半径（大小），范围在1.1到2.6之间。
-    this.r = getRandInterval(1.2, 2.9);
+    this.r = getRandInterval(1.2, 3.6);
     this.dx = getRandInterval(speedCoeff, 6 * speedCoeff) + (this.comet + 1 - 1) * speedCoeff * getRandInterval(50, 120) + speedCoeff * 2;
     this.dy = -getRandInterval(speedCoeff, 6 * speedCoeff) - (this.comet + 1 - 1) * speedCoeff * getRandInterval(50, 120);
     this.fadingOut = null;
