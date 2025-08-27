@@ -2,8 +2,8 @@
 html, body {
   margin: 0;
   height: 100%;
-  background: transparent;
-  overflow: hidden; /* 关键：隐藏底部滚动条 */
+  background-color: #000 !important; /* 与 030 一致 */
+  overflow: hidden;
 }
 
 /* 层级：universe(0) < canvas(1) < three(2) < footer(10) */
@@ -11,14 +11,16 @@ html, body {
 #universe {
   position: fixed;
   inset: 0;
-  z-index: 0;
+  z-index: 1;
   pointer-events: none;
+  background: transparent;
 }
 #canvas {
   position: fixed;
   inset: 0;
-  z-index: 1;            /* 低于 Three.js 与 footer */
+  z-index: 2;            /* 低于 Three.js 与 footer */
   pointer-events: none;
+  background: transparent;
 }
 
 /* footer（人物）贴底且置顶显示 */
@@ -60,3 +62,24 @@ html, body {
 /* 关键：让 #footer 相对视口定位，不再相对容器；防止“悬空变小” */
 .container { position: static; }
 .content { position: static; }
+
+/* 画布保持透明（避免遮住页面背景） */
+#universe,
+#canvas {
+  background: transparent;
+}
+
+/* 兜底层，防止被 JS 内联覆盖；同样粘贴与 030 完全一致的背景声明 */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(2000px at 10% 130%, rgba(33, 39, 80, 1) 10%, #020409 100%) !important;
+}
+
+/* 与 030 完全一致的渐变，仅添加 background，不改动其他样式 */
+.container {
+  background-image: radial-gradient(2000px at 10% 130%, rgba(33, 39, 80, 1) 10%, #020409 100%) !important;
+}
