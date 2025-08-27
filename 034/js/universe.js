@@ -33,21 +33,21 @@ function createUniverse() {
 }
 
 function draw() {
-  // 先填充深色背景
-  universe.fillStyle = 'rgba(9,10,15,1)';
-  universe.fillRect(0, 0, width, height);
+  // 用不透明黑色清屏会完全遮住 CSS 渐变 —— 必须移除
+  // universe.fillStyle = 'rgba(9,10,15,1)';
+  // universe.fillRect(0, 0, width, height);
+
+  // 改为透明清屏，允许下面的 CSS 渐变透出
+  universe.clearRect(0, 0, width, height);
 
   var starsLength = stars.length;
-
   for (var i = 0; i < starsLength; i++) {
     var star = stars[i];
-    
     star.move();
     star.fadeIn();
     star.fadeOut();
     star.draw();
   }
-
   window.requestAnimationFrame(draw);
 }
 
@@ -155,3 +155,10 @@ function windowResizeHandler() {
   canva.setAttribute('width', width);
   canva.setAttribute('height', height);
 }
+
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  alpha: true           // 开启透明通道
+});
+renderer.setClearColor(0x000000, 0);   // 第二个参数 0 => 透明清屏
+// 或：renderer.setClearAlpha(0);

@@ -2,7 +2,9 @@
 html, body {
   margin: 0;
   height: 100%;
-  background-color: #000 !important; /* 与 030 一致 */
+  background-color: black !important;              /* 与 030 完全一致 */
+  -webkit-filter: contrast(120%) !important;       /* 与 030 完全一致 */
+  filter: contrast(120%) !important;               /* 与 030 完全一致 */
   overflow: hidden;
 }
 
@@ -63,23 +65,18 @@ html, body {
 .container { position: static; }
 .content { position: static; }
 
-/* 画布保持透明（避免遮住页面背景） */
+/* 与 030 完全一致的容器背景（保持原有布局属性不变） */
+.container {
+  width: 100%;                         /* 与 030 一致 */
+  height: 99.74%;                      /* 与 030 一致 */
+  background-image: radial-gradient(2000px at 10% 130%, rgba(33, 39, 80, 1) 10%, #020409 100%) !important;
+}
+
+/* 移除之前用于兜底的伪元素（与 030 不一致且滤镜不生效） */
+body::before { content: none !important; background: none !important; }
+
+/* 画布保持透明（仅此，不改布局） */
 #universe,
 #canvas {
-  background: transparent;
-}
-
-/* 兜底层，防止被 JS 内联覆盖；同样粘贴与 030 完全一致的背景声明 */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: radial-gradient(2000px at 10% 130%, rgba(33, 39, 80, 1) 10%, #020409 100%) !important;
-}
-
-/* 与 030 完全一致的渐变，仅添加 background，不改动其他样式 */
-.container {
-  background-image: radial-gradient(2000px at 10% 130%, rgba(33, 39, 80, 1) 10%, #020409 100%) !important;
+  background: transparent !important;
 }

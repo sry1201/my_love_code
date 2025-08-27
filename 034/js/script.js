@@ -10,10 +10,16 @@ const camera = new THREE.PerspectiveCamera(
   1000
 );
 
+// 创建渲染器时开启 alpha
 const renderer = new THREE.WebGLRenderer({
   antialias: true,
   alpha: true
 });
+
+// 清屏改为透明
+renderer.setClearColor(0x000000, 0); // 第二个参数 0 表示完全透明
+// 或者：renderer.setClearAlpha(0);
+
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
