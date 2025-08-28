@@ -7,28 +7,35 @@
     || window.msRequestAnimationFrame;
 
   const RADIUS = Math.PI * 2;
-  const PARTICLE_NUM = 3200;
+  const PARTICLE_NUM = 5200; // ↑ 提高粒子数，提升笔画填充密度
   let CANVASWIDTH = 500;
   let CANVASHEIGHT = 150;
   const CANVASID = 'canvas'; // 若你有独立文字画布，可改为 'text'
 
+// 新增：更圆润的中文字体栈与字重
+  const FONT_FAMILY = '"Noto Sans SC","Microsoft YaHei","Source Han Sans SC","PingFang SC","Helvetica Neue",Arial,sans-serif';
+  const FONT_WEIGHT = 100; // ↑ 加粗，笔画更结实
+
   // 左侧加大内边距，避免最左笔画被裁
-  const PADDING_LEFT = 112;       // 原 96 -> 112，给最左笔画多一点安全边
+  const PADDING_LEFT = 72;       // ↓ 从 112 降到 72，让文字更贴近画布左侧
   const PADDING_RIGHT = 36;
   const PADDING_TOP = 0;
   const PADDING_BOTTOM = 0;
 
   // 画布离页面左边再远一点，彻底避免贴边裁切
-  const LEFT_EDGE_PERCENT = 0.08; // 保持 8%，如仍贴边可调到 0.10
-  const TOP_OFFSET_PERCENT = 0.15;
+  const LEFT_EDGE_PERCENT = 0.001; // ↓ 从 0.08 调到 0.04，更靠近页面左边
+  const TOP_OFFSET_PERCENT = 0.05;
 
-  const SAMPLE_STEP = 2;
+  const SAMPLE_STEP = 1; // ↓ 更密集采样，提高字形细节
 
-  // 文案（保持原顺序）
-  let texts = [
-    '抱歉','被拒绝的我','无法抗拒自己的内心','ARE YOU','LOOKING AT THE',
-    'SAME STAR','WITH ME ?','HAPPY','CHINESE','VALENTINE\'S','DAY','I MISS YOU'
+// 文案（保持原顺序）——改：保留原文案为 textsRaw，折行后写回 texts
+
+  let textsRaw = [
+    '抱歉','还是忍不住打扰','被拒绝的我','本不该再来','但无法抗拒自己的内心','所以，再次问候：七夕快乐。',
+    '如果你愿意','我的故事里永远为你保留位置','我所期待的','是能与你并肩共望一片星空'
   ];
+
+  let texts = []; // 折行后的行数组
 
   let activeCount = 1;
   let reveal = 0;
@@ -53,7 +60,8 @@
     offCtx.fillStyle = 'rgb(255, 255, 255)';
     offCtx.textBaseline = 'middle';
     offCtx.textAlign = 'left';
-    offCtx.font = textSize + 'px "SimHei","Avenir","Helvetica Neue","Arial",sans-serif';
+    // 改：使用中文字体栈 + 字重
+    offCtx.font = FONT_WEIGHT + ' ' + textSize + 'px ' + FONT_FAMILY;
 
     // 顶部对齐：自上而下逐行绘制
     let y = PADDING_TOP + lineHeight * 0.5;
@@ -68,8 +76,7 @@
       } else {
         offCtx.save();
         offCtx.beginPath();
-        // 裁剪向左放宽 4px，避免最左一笔被裁；上下放宽确保不切顶/底
-        const REVEAL_LEFT_PAD = 4;
+        const REVEAL_LEFT_PAD = 6;
         offCtx.rect(
           x - REVEAL_LEFT_PAD,
           y - lineHeight * 0.75,
@@ -167,15 +174,78 @@
     }
   }
 
+  // 新增：中文标点（避免换行后行首是标点）
+  const CN_PUNC = '，。、“”、；：？！…—）】〉》＞』」’"]';
+  function isPunc(ch) {
+    return CN_PUNC.indexOf(ch) >= 0;
+  }
+
+  // 新增：按可用宽度把 textsRaw 自动折行
+  function wrapTextsByWidth(maxWidth) {
+    const lines = [];
+    offCtx.font = FONT_WEIGHT + ' ' + textSize + 'px ' + FONT_FAMILY;
+
+    for (const src of textsRaw) {
+      if (!src || /^\s+$/.test(src)) { // 空行
+        lines.push(''); continue;
+      }
+      const chars = Array.from(src);
+      let line = '';
+      for (let i = 0; i < chars.length; i++) {
+        const tryLine = line + chars[i];
+        const w = offCtx.measureText(tryLine).width;
+        if (w <= maxWidth) {
+          line = tryLine;
+        } else {
+          if (line.length) {
+            // 若当前字符是标点，则把它也放到上一行，避免行首标点
+            if (isPunc(chars[i])) {
+              lines.push(line + chars[i]);
+              line = '';
+            } else {
+              lines.push(line);
+              line = chars[i];
+            }
+          } else {
+            // 单字符就超宽，强制断（极端情况）
+            lines.push(chars[i]);
+            line = '';
+          }
+        }
+      }
+      if (line.length || src === '') lines.push(line);
+    }
+    return lines;
+  }
+
   function setDimensions () {
     // 固定一个稳定的画布宽度区间，不随文本测量变化，避免“整体右移”的观感
     const maxViewportW = Math.floor(window.innerWidth * 0.8); // 占屏宽 80%
     const targetH = Math.max(260, Math.floor(window.innerHeight * 0.55));
-    lineHeight = Math.max(36, Math.floor(targetH / texts.length));
+
+    // 先用一个预估字号/行高
+    lineHeight = Math.max(36, Math.floor(targetH / 10)); // 先按最多10行估计
     textSize   = Math.max(30, Math.floor(lineHeight * 0.9));
 
     // 固定宽度：最小 560px，最大 1200px
     CANVASWIDTH = Math.max(560, Math.min(maxViewportW, 1200));
+    const usableW = CANVASWIDTH - PADDING_LEFT - PADDING_RIGHT; // 可用于文字的宽度
+
+    // 第一次折行
+    texts = wrapTextsByWidth(usableW);
+
+    // 依据折行后的行数重新计算字号/行高，使其适配高度
+    const wantedH = PADDING_TOP + (lineHeight * texts.length + LINE_GAP * (texts.length - 1)) + PADDING_BOTTOM;
+    const topPx = Math.floor(window.innerHeight * TOP_OFFSET_PERCENT);
+    const availH = Math.max(200, window.innerHeight - topPx - 24);
+
+    if (wantedH > availH) {
+      const scale = availH / wantedH;
+      lineHeight = Math.max(28, Math.floor(lineHeight * scale));
+      textSize   = Math.max(22, Math.floor(textSize * scale));
+      // 字号改变后需重新折行一次
+      texts = wrapTextsByWidth(usableW);
+    }
 
     // 画布高度容纳全部行（顶部对齐）
     CANVASHEIGHT = PADDING_TOP + (lineHeight * texts.length + LINE_GAP * (texts.length - 1)) + PADDING_BOTTOM;
@@ -215,7 +285,7 @@
       const logicalW = canvas.clientWidth || CANVASWIDTH;
       const logicalH = canvas.clientHeight || CANVASHEIGHT;
       const spread = logicalH;
-      const size = 1.2 + Math.random() * 0.8;
+      const size = 3.6 ; // ↑ 粒子更大一点，笔画更“实”
 
       this.delta = 0.06;
       this.x = 0; this.y = 0;
@@ -225,7 +295,7 @@
       this.size = size;
       this.inText = false;
       this.opacity = 0;
-      this.fadeInRate = 0.005;
+      this.fadeInRate = 0.007; // ↑ 略快一点进入文字状态
       this.fadeOutRate = 0.03;
       this.opacityTresh = 0.98;
       this.fadingOut = true;
@@ -244,7 +314,7 @@
       } else this.opacity = 0;
     }
     draw(ctx) {
-      ctx.fillStyle = 'rgba(226,225,142,' + this.opacity + ')';
+      ctx.fillStyle = 'rgba(248,244,190,' + this.opacity + ')'; // ↑ 亮一点的暖黄
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.size, 0, RADIUS, true);
       ctx.closePath();
@@ -252,12 +322,24 @@
     }
   }
 
-  function init () {
+  // 改：等待字体加载后再初始化，保证测量与渲染一致
+  async function init () {
     const el = document.getElementById(CANVASID);
     if (!el || !el.getContext) return;
     canvas = el;
+
+    try {
+      if (document.fonts && document.fonts.load) {
+        // 先用一个临时字号加载字体，避免回退
+        await document.fonts.load(`${FONT_WEIGHT} 32px ${FONT_FAMILY}`);
+        await document.fonts.ready;
+        console.log('CN font loaded');
+      }
+    } catch(e) {
+      console.warn('Font load skipped', e);
+    }
+
     setDimensions();
-    // bindEvents(); // 无需点击
     particles.length = 0;
     for (let i = 0; i < PARTICLE_NUM; i++) particles[i] = new Particle(canvas);
     window.addEventListener('resize', setDimensions);
