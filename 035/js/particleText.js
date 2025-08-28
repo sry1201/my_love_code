@@ -7,30 +7,39 @@
     || window.msRequestAnimationFrame;
 
   const RADIUS = Math.PI * 2;
-  const PARTICLE_NUM = 2000;
-  // 允许根据窗口自适应，改为 let（原来是 const）
+  const PARTICLE_NUM = 3200;
   let CANVASWIDTH = 500;
   let CANVASHEIGHT = 150;
-  const CANVASID = 'canvas'; // 若你用独立文字画布，请改成 'text'
-  const PADDING_LEFT = 36;   // 新增：左侧内边距（像素）
+  const CANVASID = 'canvas'; // 若你有独立文字画布，可改为 'text'
+
+  // 左侧加大内边距，避免最左笔画被裁
+  const PADDING_LEFT = 112;       // 原 96 -> 112，给最左笔画多一点安全边
+  const PADDING_RIGHT = 36;
+  const PADDING_TOP = 0;
+  const PADDING_BOTTOM = 0;
+
+  // 画布离页面左边再远一点，彻底避免贴边裁切
+  const LEFT_EDGE_PERCENT = 0.08; // 保持 8%，如仍贴边可调到 0.10
+  const TOP_OFFSET_PERCENT = 0.15;
+
+  const SAMPLE_STEP = 2;
 
   // 文案（保持原顺序）
   let texts = [
-    'MY DEAR','LOOK UP AT THE','STARRY SKY','ARE YOU','LOOKING AT THE',
+    '抱歉','被拒绝的我','无法抗拒自己的内心','ARE YOU','LOOKING AT THE',
     'SAME STAR','WITH ME ?','HAPPY','CHINESE','VALENTINE\'S','DAY','I MISS YOU'
   ];
 
-  // 新增：多行累积与渐显参数
-  let activeCount = 1;          // 已显示的行数
-  let reveal = 0;               // 当前新增行 0~1 的显露进度（从左到右）
-  const REVEAL_SPEED = 0.02;    // 渐显速度（每帧增加的比例）
-  let lineHeight = 48;          // 行高（随窗口与行数自适应）
-  let textSize = 40;            // 字号（随窗口与行数自适应）
-  const LINE_GAP = 8;           // 行间距（像素）
+  let activeCount = 1;
+  let reveal = 0;
+  const REVEAL_SPEED = 0.02;
+  let lineHeight = 48;
+  let textSize = 40;
+  const LINE_GAP = 8;
 
-  // 离屏画布：把所有已显示行绘制到这里，再读像素驱动粒子
+  // 离屏画布：开启 willReadFrequently 减少读回退化
   const offCanvas = document.createElement('canvas');
-  const offCtx = offCanvas.getContext('2d');
+  const offCtx = offCanvas.getContext('2d', { willReadFrequently: true });
 
   let canvas, ctx;
   let particles = [];
@@ -40,29 +49,33 @@
   // let textIndex = 0;
 
   function draw() {
-    // 1) 在离屏画布上绘制“已显示的所有行”
     offCtx.clearRect(0, 0, CANVASWIDTH, CANVASHEIGHT);
     offCtx.fillStyle = 'rgb(255, 255, 255)';
     offCtx.textBaseline = 'middle';
-    offCtx.textAlign = 'left'; // 新增：左对齐
+    offCtx.textAlign = 'left';
     offCtx.font = textSize + 'px "SimHei","Avenir","Helvetica Neue","Arial",sans-serif';
 
-    // 垂直居中起始 y
-    const totalHeight = activeCount * lineHeight + (activeCount - 1) * LINE_GAP;
-    let y = (CANVASHEIGHT - totalHeight) * 0.5 + lineHeight * 0.5;
+    // 顶部对齐：自上而下逐行绘制
+    let y = PADDING_TOP + lineHeight * 0.5;
 
     for (let i = 0; i < activeCount; i++) {
       const t = texts[i];
       const w = offCtx.measureText(t).width;
-      const x = PADDING_LEFT; // 改：从左边距开始绘制
+      const x = PADDING_LEFT;
 
       if (i < activeCount - 1) {
         offCtx.fillText(t, x, y);
       } else {
         offCtx.save();
         offCtx.beginPath();
-        // 改：裁剪也从左边距开始，按 reveal 逐步展开
-        offCtx.rect(x, y - textSize * 0.6, w * Math.min(reveal, 1), textSize * 1.2);
+        // 裁剪向左放宽 4px，避免最左一笔被裁；上下放宽确保不切顶/底
+        const REVEAL_LEFT_PAD = 4;
+        offCtx.rect(
+          x - REVEAL_LEFT_PAD,
+          y - lineHeight * 0.75,
+          w * Math.min(reveal, 1) + REVEAL_LEFT_PAD,
+          lineHeight * 1.5
+        );
         offCtx.clip();
         offCtx.fillText(t, x, y);
         offCtx.restore();
@@ -70,7 +83,6 @@
       y += lineHeight + LINE_GAP;
     }
 
-    // 2) 读取离屏像素，驱动粒子收敛
     const imgData = offCtx.getImageData(0, 0, CANVASWIDTH, CANVASHEIGHT);
     ctx.clearRect(0, 0, CANVASWIDTH, CANVASHEIGHT);
 
@@ -82,25 +94,40 @@
       reveal += REVEAL_SPEED;
       if (reveal >= 1) { activeCount++; reveal = 0; }
     } else {
-      reveal = 1; // 全部显示完毕后保持静止
+      reveal = 1; // 全部显示后保持
     }
-
     requestAnimationFrame(draw);
+  }
+
+  // 均匀下采样工具：从整张文本像素里，等间距选取目标数量，保证整行都有粒子覆盖
+  function pickEven(pxls, wantCount) {
+    if (pxls.length <= wantCount) return pxls;
+    const out = new Array(wantCount);
+    const step = (pxls.length - 1) / (wantCount - 1);
+    for (let i = 0; i < wantCount; i++) {
+      out[i] = pxls[Math.round(i * step)];
+    }
+    return out;
   }
 
   function particleText(imgData) {
     const pxls = [];
-    for (let w = CANVASWIDTH; w > 0; w -= 3) {
-      for (let h = 0; h < CANVASHEIGHT; h += 3) {
-        const index = (w + h * CANVASWIDTH) * 4;
-        if (imgData.data[index] > 1) pxls.push([w, h]); // 白色文本像素
+    // 从右到左/从上到下扫描像素（顺序现在不重要了，因为我们会均匀抽样）
+    for (let w = CANVASWIDTH - 1; w >= 0; w -= SAMPLE_STEP) {
+      for (let h = 0; h < CANVASHEIGHT; h += SAMPLE_STEP) {
+        const index = (w + h * CANVASWIDTH) << 2; // (w + h*W)*4
+        if (imgData.data[index] > 1) pxls.push([w, h]);
       }
     }
 
-    let j = Math.max(0, parseInt((particles.length - pxls.length) / 2, 10));
-    for (let i = 0; i < pxls.length && j < particles.length; i++, j++) {
-      const p = particles[j];
-      const prev = pxls[i - 1] || pxls[i];
+    // 关键：像素点过多时，做“均匀下采样”，让整行都被覆盖
+    const targetPxls = pickEven(pxls, Math.min(particles.length, pxls.length));
+
+    // 把粒子映射到 targetPxls（不再使用居中偏移 j 的那套逻辑）
+    const count = Math.min(particles.length, targetPxls.length);
+    for (let i = 0; i < count; i++) {
+      const p = particles[i];
+      const prev = targetPxls[i];
       let X, Y;
       if (quiver) {
         X = prev[0] - (p.px + Math.random() * 10);
@@ -122,44 +149,58 @@
       p.draw(ctx);
     }
 
-    for (let i = 0; i < particles.length; i++) {
+    // 多余粒子（超过目标像素的）按原逻辑回到“休眠”轨迹
+    for (let i = count; i < particles.length; i++) {
       const p = particles[i];
-      if (!p.inText) {
-        p.fadeOut();
-        const X = p.mx - p.px;
-        const Y = p.my - p.py;
-        const T = Math.sqrt(X * X + Y * Y);
-        const A = Math.atan2(Y, X);
-        const C = Math.cos(A);
-        const S = Math.sin(A);
-        p.x = p.px + C * T * p.delta / 2;
-        p.y = p.py + S * T * p.delta / 2;
-        p.px = p.x;
-        p.py = p.y;
-        p.draw(ctx);
-      }
+      p.fadeOut();
+      const X = p.mx - p.px;
+      const Y = p.my - p.py;
+      const T = Math.sqrt(X * X + Y * Y);
+      const A = Math.atan2(Y, X);
+      const C = Math.cos(A);
+      const S = Math.sin(A);
+      p.x = p.px + C * T * p.delta / 2;
+      p.y = p.py + S * T * p.delta / 2;
+      p.px = p.x;
+      p.py = p.y;
+      p.draw(ctx);
     }
   }
 
   function setDimensions () {
-    // 改：画布宽度改为屏幕 50%（可按需调 0.45~0.6），高度按行数自适应
-    CANVASWIDTH = Math.min(900, Math.floor(window.innerWidth * 0.5));
-    const targetH = Math.max(180, Math.floor(window.innerHeight * 0.4));
-    lineHeight = Math.max(24, Math.floor(targetH / texts.length));
-    textSize = Math.max(18, Math.floor(lineHeight * 0.8));
-    CANVASHEIGHT = lineHeight * texts.length + LINE_GAP * (texts.length - 1);
+    // 固定一个稳定的画布宽度区间，不随文本测量变化，避免“整体右移”的观感
+    const maxViewportW = Math.floor(window.innerWidth * 0.8); // 占屏宽 80%
+    const targetH = Math.max(260, Math.floor(window.innerHeight * 0.55));
+    lineHeight = Math.max(36, Math.floor(targetH / texts.length));
+    textSize   = Math.max(30, Math.floor(lineHeight * 0.9));
 
-    canvas.width = CANVASWIDTH;
-    canvas.height = CANVASHEIGHT;
+    // 固定宽度：最小 560px，最大 1200px
+    CANVASWIDTH = Math.max(560, Math.min(maxViewportW, 1200));
+
+    // 画布高度容纳全部行（顶部对齐）
+    CANVASHEIGHT = PADDING_TOP + (lineHeight * texts.length + LINE_GAP * (texts.length - 1)) + PADDING_BOTTOM;
+
+    // 高 DPI 渲染
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.floor(CANVASWIDTH * dpr);
+    canvas.height = Math.floor(CANVASHEIGHT * dpr);
+    canvas.style.width = CANVASWIDTH + 'px';
+    canvas.style.height = CANVASHEIGHT + 'px';
+
     offCanvas.width = CANVASWIDTH;
     offCanvas.height = CANVASHEIGHT;
 
-    // 改：把画布放到左侧，垂直居中
+    // 显示画布 2D 上下文（同样可开启 willReadFrequently）
+    const ctx2d = canvas.getContext('2d', { willReadFrequently: true });
+    ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx = ctx2d;
+
+    // 固定在页面左侧与顶部，不再使用居中位移
     canvas.style.position = 'fixed';
-    canvas.style.left = '4%';                // 左侧留一点外边距
-    canvas.style.top = '50%';
-    canvas.style.transform = 'translateY(-50%)'; // 只做垂直居中
-    canvas.style.zIndex = '1';
+    canvas.style.left = (LEFT_EDGE_PERCENT * 100) + '%';  // 8%
+    canvas.style.top = Math.floor(window.innerHeight * TOP_OFFSET_PERCENT) + 'px';
+    canvas.style.transform = 'none';
+    canvas.style.zIndex = '3';
     canvas.style.pointerEvents = 'none';
     canvas.style.cursor = 'default';
   }
@@ -170,15 +211,17 @@
 
   class Particle {
     constructor(canvas) {
-      const spread = canvas.height;
-      const size = Math.random() * 1.2;
+      // 使用逻辑尺寸初始化，避免 dpr 缩放导致目标偏移
+      const logicalW = canvas.clientWidth || CANVASWIDTH;
+      const logicalH = canvas.clientHeight || CANVASHEIGHT;
+      const spread = logicalH;
+      const size = 1.2 + Math.random() * 0.8;
+
       this.delta = 0.06;
-      this.x = 0;
-      this.y = 0;
-      this.px = Math.random() * canvas.width;
-      this.py = (canvas.height * 0.5) + ((Math.random() - 0.5) * spread);
-      this.mx = this.px;
-      this.my = this.py;
+      this.x = 0; this.y = 0;
+      this.px = Math.random() * logicalW;
+      this.py = (logicalH * 0.5) + ((Math.random() - 0.5) * spread);
+      this.mx = this.px; this.my = this.py;
       this.size = size;
       this.inText = false;
       this.opacity = 0;
@@ -210,16 +253,13 @@
   }
 
   function init () {
-    canvas = document.getElementById(CANVASID);
-    if (!canvas || !canvas.getContext) return;
-    // 修复 getImageData 性能告警
-    ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const el = document.getElementById(CANVASID);
+    if (!el || !el.getContext) return;
+    canvas = el;
     setDimensions();
-    bindEvents(); // 现在不做任何事
+    // bindEvents(); // 无需点击
     particles.length = 0;
     for (let i = 0; i < PARTICLE_NUM; i++) particles[i] = new Particle(canvas);
-
-    // 窗口尺寸变化时自适应
     window.addEventListener('resize', setDimensions);
     draw();
   }
