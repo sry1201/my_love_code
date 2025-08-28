@@ -28,7 +28,13 @@
 
   const SAMPLE_STEP = 3; // ↓ 更密集采样，提高字形细节
 
-// 文案（保持原顺序）——改：保留原文案为 textsRaw，折行后写回 texts
+  // 自动淡出控制
+  const AUTO_FADE_DELAY_MS = 26000;     // 字体加载完成后延时 10s 再开始淡出
+  const AUTO_FADE_DURATION_MS = 2000;   // 淡出持续时间 2s，可按需改
+  let fadeStartAt = null;               // 开始淡出的时间戳
+  let globalAlpha = 1;                  // 全局不透明度（1 → 0）
+
+  // 文案（保持原顺序）——改：保留原文案为 textsRaw，折行后写回 texts
 
   let textsRaw = [
     '抱歉','还是忍不住打扰','被拒绝的我','本不该再来','但无法抗拒自己的内心','所以，再次问候：七夕快乐。',
@@ -60,7 +66,6 @@
     offCtx.fillStyle = 'rgb(255, 255, 255)';
     offCtx.textBaseline = 'middle';
     offCtx.textAlign = 'left';
-    // 改：使用中文字体栈 + 字重
     offCtx.font = FONT_WEIGHT + ' ' + textSize + 'px ' + FONT_FAMILY;
 
     // 顶部对齐：自上而下逐行绘制
@@ -93,8 +98,26 @@
     const imgData = offCtx.getImageData(0, 0, CANVASWIDTH, CANVASHEIGHT);
     ctx.clearRect(0, 0, CANVASWIDTH, CANVASHEIGHT);
 
+    // 处理全局淡出
+    if (fadeStartAt !== null) {
+      const t = Math.min(1, (performance.now() - fadeStartAt) / AUTO_FADE_DURATION_MS);
+      globalAlpha = 1 - t;
+    } else {
+      globalAlpha = 1;
+    }
+    ctx.save();
+    ctx.globalAlpha = globalAlpha;
+
     for (let i = 0; i < particles.length; i++) particles[i].inText = false;
     particleText(imgData);
+    ctx.restore();
+
+    if (globalAlpha <= 0) {
+      // 完全淡出后停止渲染并隐藏画布
+      ctx.clearRect(0, 0, CANVASWIDTH, CANVASHEIGHT);
+      canvas.style.display = 'none';
+      return;
+    }
 
     // 3) 推进当前行的渐显；完成后增加下一行，直到全部显示
     if (activeCount < texts.length) {
@@ -330,7 +353,6 @@
 
     try {
       if (document.fonts && document.fonts.load) {
-        // 先用一个临时字号加载字体，避免回退
         await document.fonts.load(`${FONT_WEIGHT} 32px ${FONT_FAMILY}`);
         await document.fonts.ready;
         console.log('CN font loaded');
@@ -344,6 +366,9 @@
     for (let i = 0; i < PARTICLE_NUM; i++) particles[i] = new Particle(canvas);
     window.addEventListener('resize', setDimensions);
     draw();
+
+    // 字体加载流程完成后启动 10s 延时，再开始淡出
+    setTimeout(() => { fadeStartAt = performance.now(); }, AUTO_FADE_DELAY_MS);
   }
   init();
 })(window);
