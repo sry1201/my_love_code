@@ -83,3 +83,14 @@ body::before {
 .container {
   background-image: radial-gradient(2000px at 10% 130%, rgba(33, 39, 80, 1) 10%, #020409 100%) !important;
 }
+
+/* 粒子文字画布位置与层级（左对齐、顶部对齐） */
+#text{
+  position: fixed;
+  left: 6%;
+  top: 15%;
+  transform: none;
+  z-index: 6;            /* 高于 WebGL/星空 */
+  pointer-events: none;  /* 不挡鼠标 */
+}
+/* 可按需微调 left/top 或 z-index */
