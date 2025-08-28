@@ -19,14 +19,14 @@
   // 左侧加大内边距，避免最左笔画被裁
   const PADDING_LEFT = 72;       // ↓ 从 112 降到 72，让文字更贴近画布左侧
   const PADDING_RIGHT = 36;
-  const PADDING_TOP = 0;
+  const PADDING_TOP = 100;
   const PADDING_BOTTOM = 0;
 
   // 画布离页面左边再远一点，彻底避免贴边裁切
-  const LEFT_EDGE_PERCENT = 0.001; // ↓ 从 0.08 调到 0.04，更靠近页面左边
+  const LEFT_EDGE_PERCENT = 0.04; // ↓ 从 0.08 调到 0.04，更靠近页面左边
   const TOP_OFFSET_PERCENT = 0.05;
 
-  const SAMPLE_STEP = 1; // ↓ 更密集采样，提高字形细节
+  const SAMPLE_STEP = 3; // ↓ 更密集采样，提高字形细节
 
 // 文案（保持原顺序）——改：保留原文案为 textsRaw，折行后写回 texts
 
@@ -39,10 +39,10 @@
 
   let activeCount = 1;
   let reveal = 0;
-  const REVEAL_SPEED = 0.02;
+  const REVEAL_SPEED = 0.01;
   let lineHeight = 48;
-  let textSize = 40;
-  const LINE_GAP = 8;
+  let textSize = 36;
+  const LINE_GAP = 10;
 
   // 离屏画布：开启 willReadFrequently 减少读回退化
   const offCanvas = document.createElement('canvas');
